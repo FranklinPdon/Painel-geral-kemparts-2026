@@ -240,7 +240,7 @@ st.divider()
 # TOP 5 ESTADOS
 # =====================================================
 
-st.subheader("Top 5 Estados")
+st.subheader("Top 5 Estados que mais compram")
 
 top_estados = (
     df_filtrado.groupby("Estado")["Total"]
@@ -278,7 +278,7 @@ if not top_produtos.empty:
 # TOP 3 PRODUTOS - MENOR
 # =====================================================
 
-st.subheader("Top 3 Produtos - Menor Performance")
+st.subheader("Produtos - Com Menor Performance")
 
 bottom_produtos = (
     df_filtrado.groupby("Descricao")["Total"]
@@ -322,7 +322,7 @@ st.divider()
 # TOP 3 CLIENTES
 # =====================================================
 
-st.subheader("Top 3 Clientes")
+st.subheader("Top 3 Clientes que mais compram")
 
 top_clientes = (
     df_filtrado.groupby("Nome")["Total"]
