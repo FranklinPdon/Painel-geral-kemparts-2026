@@ -14,7 +14,20 @@ METAS = {
     "Março": 3186391.65
 }
 
-META_KG = 164430
+METAS_KG = {
+    "Janeiro": 126670,
+    "Fevereiro": 164430,
+    "Março": 167371,
+    "Abril": 191195,
+    "Maio": 190840,
+    "Junho": 230735,
+    "Julho": 202845,
+    "Agosto": 216508,
+    "Setembro": 226475,
+    "Outubro": 194810,
+    "Novembro": 201370,
+    "Dezembro": 157346
+}
 
 # =====================================================
 # FORMATAÇÃO EXECUTIVA
@@ -155,7 +168,9 @@ quantidade = df_filtrado["Quantidade"].sum()
 
 percentual_meta = (faturamento / meta_valor) * 100 if meta_valor else 0
 falta_meta = meta_valor - faturamento
-percentual_meta_kg = (quantidade / META_KG) * 100 if META_KG else 0
+meta_volume = sum(METAS_KG.get(m, 0) for m in mes) if mes else sum(METAS_KG.values())
+
+percentual_meta_kg = (quantidade / meta_volume) * 100 if meta_volume else 0
 
 # =====================================================
 # INDICADORES FINANCEIROS
@@ -181,7 +196,7 @@ st.subheader("Indicadores de Volume")
 k1, k2, k3 = st.columns(3)
 
 k1.metric("Volume Comercializado", f"{quantidade:,.0f} KG")
-k2.metric("Meta de Volume", f"{META_KG:,.0f} KG")
+k2.metric("Meta de Volume", f"{meta_volume:,.0f} KG")
 k3.metric("Atingimento Volume (%)", f"{percentual_meta_kg:,.2f}%")
 
 st.divider()
