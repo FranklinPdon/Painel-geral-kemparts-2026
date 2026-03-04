@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="Central de Performance Comercial 2026", layout="wide")
+st.set_page_config(page_title="Painel de Acompanhamento de Faturamento Diário", layout="wide")
 
 # =====================================================
 # METAS
@@ -94,8 +94,7 @@ df = carregar_dados()
 # =====================================================
 
 st.image("CAPA.png", use_container_width=True)
-st.title("Central de Performance Comercial 2026")
-st.markdown("### Análise estratégica de faturamento, metas e performance – SC x SP")
+st.title("Painel de Acompanhamento de Faturamento Diário")
 
 # =====================================================
 # FILTROS
