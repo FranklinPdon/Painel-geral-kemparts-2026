@@ -92,7 +92,6 @@ st.image("CAPA.png", use_container_width=True)
 st.title("Central de Performance Comercial 2026")
 st.markdown("### Análise estratégica de faturamento, metas e performance – SC x SP")
 
-
 # =====================================================
 # FILTROS
 # =====================================================
@@ -184,6 +183,7 @@ st.subheader("Projeção de Fechamento do Mês")
 from datetime import datetime
 import calendar
 
+# Se não selecionar mês, usa mês atual
 hoje = datetime.today()
 
 if mes and len(mes) == 1:
@@ -206,6 +206,7 @@ else:
     }
     mes_nome = mapa_meses_inverso.get(mes_nome, mes_nome)
 
+# Número do mês
 mapa_numero_mes = {
     "Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4,
     "Maio": 5, "Junho": 6, "Julho": 7, "Agosto": 8,
@@ -221,11 +222,19 @@ dia_atual = hoje.day
 dias_decorridos = min(dia_atual, dias_no_mes)
 dias_restantes = dias_no_mes - dias_decorridos
 
+# Média diária
 media_diaria = faturamento / dias_decorridos if dias_decorridos > 0 else 0
+
+# Projeção final
 projecao_final = media_diaria * dias_no_mes
 
+# Quanto falta para meta
 valor_restante = meta_valor - faturamento
 necessario_por_dia = valor_restante / dias_restantes if dias_restantes > 0 else 0
+
+# =====================================================
+# EXIBIÇÃO EXECUTIVA
+# =====================================================
 
 p1, p2, p3, p4 = st.columns(4)
 
@@ -234,8 +243,12 @@ p2.metric("Projeção de Fechamento", formatar_moeda(projecao_final))
 p3.metric("Dias Restantes", dias_restantes)
 p4.metric("Necessário por Dia p/ Meta", formatar_moeda(necessario_por_dia))
 
+# =====================================================
+# ALERTA EXECUTIVO
+# =====================================================
+
 if projecao_final >= meta_valor:
-    st.success(" Mantendo o ritmo atual, a meta será atingida.")
+    st.success("🚀 Mantendo o ritmo atual, a meta será atingida.")
 else:
     st.error("⚠ No ritmo atual, a meta NÃO será atingida.")
 
