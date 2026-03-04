@@ -47,8 +47,8 @@ def formatar_moeda(valor):
 
 @st.cache_data
 def carregar_dados():
-    df_sc = pd.read_excel("BASE_SC_SP_NEW.xlsx", sheet_name="SC")
-    df_sp = pd.read_excel("BASE_SC_SP_NEW.xlsx", sheet_name="SP")
+    df_sc = pd.read_excel("BASE_SC_SP_NEW.xlsx", sheet_name="SP")
+    df_sp = pd.read_excel("BASE_SC_SP_NEW.xlsx", sheet_name="SC")
 
     df_sc.columns = df_sc.columns.str.strip()
     df_sp.columns = df_sp.columns.str.strip()
@@ -91,15 +91,13 @@ df = carregar_dados()
 st.image("CAPA.png", use_container_width=True)
 st.title("Central de Performance Comercial 2026")
 st.markdown("### Análise estratégica de faturamento, metas e performance – SC x SP")
-# =====================================================
-# FILTROS
-# =====================================================
+
 
 # =====================================================
 # FILTROS
 # =====================================================
 
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     vendedor = st.multiselect(
@@ -116,20 +114,13 @@ with col2:
     )
 
 with col3:
-    produto = st.multiselect(
-        "Descrição do Produto",
-        sorted(df["Descricao"].dropna().unique()),
-        placeholder="Selecione o produto"
-    )
-
-with col4:
     estado = st.multiselect(
         "Estado",
         sorted(df["Estado"].dropna().unique()),
         placeholder="Selecione o estado"
     )
 
-with col5:
+with col4:
     mes = st.multiselect(
         "Mês Faturamento",
         sorted(df["Mes"].dropna().unique()),
@@ -153,9 +144,6 @@ if estado:
 
 if mes:
     df_filtrado = df_filtrado[df_filtrado["Mes"].isin(mes)]
-
-if produto:
-    df_filtrado = df_filtrado[df_filtrado["Descricao"].isin(produto)]
 
 # =====================================================
 # META E CÁLCULOS
@@ -188,6 +176,70 @@ c4.metric("Atingimento (%)", f"{percentual_meta:,.2f}%")
 st.divider()
 
 # =====================================================
+# PROJEÇÃO DE FECHAMENTO DO MÊS
+# =====================================================
+
+st.subheader("Projeção de Fechamento do Mês")
+
+from datetime import datetime
+import calendar
+
+hoje = datetime.today()
+
+if mes and len(mes) == 1:
+    mes_nome = mes[0]
+else:
+    mes_nome = hoje.strftime("%B")
+    mapa_meses_inverso = {
+        "January": "Janeiro",
+        "February": "Fevereiro",
+        "March": "Março",
+        "April": "Abril",
+        "May": "Maio",
+        "June": "Junho",
+        "July": "Julho",
+        "August": "Agosto",
+        "September": "Setembro",
+        "October": "Outubro",
+        "November": "Novembro",
+        "December": "Dezembro"
+    }
+    mes_nome = mapa_meses_inverso.get(mes_nome, mes_nome)
+
+mapa_numero_mes = {
+    "Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4,
+    "Maio": 5, "Junho": 6, "Julho": 7, "Agosto": 8,
+    "Setembro": 9, "Outubro": 10, "Novembro": 11, "Dezembro": 12
+}
+
+numero_mes = mapa_numero_mes.get(mes_nome, hoje.month)
+
+ano_atual = hoje.year
+dias_no_mes = calendar.monthrange(ano_atual, numero_mes)[1]
+dia_atual = hoje.day
+
+dias_decorridos = min(dia_atual, dias_no_mes)
+dias_restantes = dias_no_mes - dias_decorridos
+
+media_diaria = faturamento / dias_decorridos if dias_decorridos > 0 else 0
+projecao_final = media_diaria * dias_no_mes
+
+valor_restante = meta_valor - faturamento
+necessario_por_dia = valor_restante / dias_restantes if dias_restantes > 0 else 0
+
+p1, p2, p3, p4 = st.columns(4)
+
+p1.metric("Média Diária Atual", formatar_moeda(media_diaria))
+p2.metric("Projeção de Fechamento", formatar_moeda(projecao_final))
+p3.metric("Dias Restantes", dias_restantes)
+p4.metric("Necessário por Dia p/ Meta", formatar_moeda(necessario_por_dia))
+
+if projecao_final >= meta_valor:
+    st.success(" Mantendo o ritmo atual, a meta será atingida.")
+else:
+    st.error("⚠ No ritmo atual, a meta NÃO será atingida.")
+
+# =====================================================
 # INDICADORES DE VOLUME
 # =====================================================
 
@@ -202,12 +254,11 @@ k3.metric("Atingimento Volume (%)", f"{percentual_meta_kg:,.2f}%")
 st.divider()
 
 # =====================================================
-# EVOLUÇÃO MENSAL DE FATURAMENTO
+# EVOLUÇÃO MENSAL
 # =====================================================
 
 st.subheader("Evolução Mensal do Faturamento 2026")
 
-# Ordem correta dos meses
 ordem_meses = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -228,84 +279,25 @@ if not faturamento_mensal.empty:
         y="Total",
         markers=True
     )
-
-    fig_linha.update_layout(
-        xaxis_title="Mês",
-        yaxis_title="Faturamento",
-        yaxis_tickprefix="R$ "
-    )
-
-    st.plotly_chart(fig_linha, use_container_width=True, key="evolucao_mensal")
+    st.plotly_chart(fig_linha, use_container_width=True)
 
 # =====================================================
-# COMPARATIVO SC x SP
+# TOP 5 PRODUTOS - MAIOR
 # =====================================================
 
-st.subheader("Comparativo de Faturamento – SC x SP")
+st.subheader("Top 5 Produtos - Maior Performance")
 
-comparativo = df_filtrado.groupby("Filial")["Total"].sum().reset_index()
-
-if not comparativo.empty:
-    fig_comp = px.bar(comparativo, x="Filial", y="Total", text_auto=".3s")
-    st.plotly_chart(fig_comp, use_container_width=True, key="comparativo")
-
-st.divider()
-
-# =====================================================
-# TOP 5 ESTADOS
-# =====================================================
-
-st.subheader("Top 5 Estados que mais compram")
-
-top_estados = (
-    df_filtrado.groupby("Estado")["Total"]
+top_produtos = (
+    df_filtrado.groupby("Descricao")["Total"]
     .sum()
     .sort_values(ascending=False)
     .head(5)
     .reset_index()
 )
 
-if not top_estados.empty:
-    fig_estados = px.pie(top_estados, names="Estado", values="Total", hole=0.4)
-    st.plotly_chart(fig_estados, use_container_width=True, key="estados")
-
-st.divider()
-
-# =====================================================
-# TOP 3 PRODUTOS - MAIOR
-# =====================================================
-
-st.subheader("Top 3 Produtos - Maior Performance")
-
-top_produtos = (
-    df_filtrado.groupby("Descricao")["Total"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(3)
-    .reset_index()
-)
-
 if not top_produtos.empty:
     fig_top = px.bar(top_produtos, x="Descricao", y="Total", text_auto=".3s")
-    st.plotly_chart(fig_top, use_container_width=True, key="top_maior")
-
-# =====================================================
-# TOP 3 PRODUTOS - MENOR
-# =====================================================
-
-st.subheader("Produtos - Com Menor Performance")
-
-bottom_produtos = (
-    df_filtrado.groupby("Descricao")["Total"]
-    .sum()
-    .sort_values(ascending=True)
-    .head(3)
-    .reset_index()
-)
-
-if not bottom_produtos.empty:
-    fig_bottom = px.bar(bottom_produtos, x="Descricao", y="Total", text_auto=".3s")
-    st.plotly_chart(fig_bottom, use_container_width=True, key="top_menor")
+    st.plotly_chart(fig_top, use_container_width=True)
 
 st.divider()
 
@@ -324,44 +316,27 @@ ranking = (
 
 if not ranking.empty:
     fig_rank = px.bar(ranking, x="Vendedor 1", y="Total", text_auto=".3s")
-    st.plotly_chart(fig_rank, use_container_width=True, key="ranking")
-
-    st.dataframe(
-        ranking.style.format({"Total": "R$ {:,.2f}"}),
-        use_container_width=True
-    )
+    st.plotly_chart(fig_rank, use_container_width=True)
 
 st.divider()
 
 # =====================================================
-# TOP 3 CLIENTES
+# TOP 5 CLIENTES
 # =====================================================
 
-st.subheader("Top 3 Clientes que mais compram")
+st.subheader("Top 5 Clientes que mais compram")
 
 top_clientes = (
     df_filtrado.groupby("Nome")["Total"]
     .sum()
     .sort_values(ascending=False)
-    .head(3)
+    .head(5)
     .reset_index()
 )
 
 if not top_clientes.empty:
     fig_clientes = px.bar(top_clientes, x="Nome", y="Total", text_auto=".3s")
-    st.plotly_chart(fig_clientes, use_container_width=True, key="clientes")
-
-    top_clientes["% Participação"] = (
-        top_clientes["Total"] / faturamento * 100 if faturamento else 0
-    )
-
-    st.dataframe(
-        top_clientes.style.format({
-            "Total": "R$ {:,.2f}",
-            "% Participação": "{:.2f}%"
-        }),
-        use_container_width=True
-    )
+    st.plotly_chart(fig_clientes, use_container_width=True)
 
 st.divider()
 
