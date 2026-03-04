@@ -336,7 +336,7 @@ top_produtos = (
     df_filtrado.groupby("Descricao")["Total"]
     .sum()
     .sort_values(ascending=False)
-    .head(5)
+    .head(9)
     .reset_index()
 )
 
@@ -375,7 +375,7 @@ top_clientes = (
     df_filtrado.groupby("Nome")["Total"]
     .sum()
     .sort_values(ascending=False)
-    .head(5)
+    .head(9)
     .reset_index()
 )
 
