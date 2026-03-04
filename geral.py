@@ -34,13 +34,18 @@ METAS_KG = {
 # =====================================================
 
 def formatar_moeda(valor):
+    """
+    Formata valores monetários para exibição:
+    - Milhão -> MM
+    - Mil -> K
+    - Valores menores -> reais com duas casas decimais
+    """
     if valor >= 1_000_000:
-        return f"R$ {valor/1_000_000:,.3f} MI"
+        return f" {valor/1_000_000:,.3f} MM"  # Milhão = MM
     elif valor >= 1_000:
-        return f"R$ {valor/1_000:,.3f} MIL"
+        return f" {valor/1_000:,.3f} K"      # Mil = K
     else:
-        return f"R$ {valor:,.2f}"
-
+        return f" {valor:,.2f}"
 # =====================================================
 # CARREGAR DADOS
 # =====================================================
@@ -167,25 +172,27 @@ st.subheader("Indicadores Financeiros")
 
 c1, c2, c3, c4 = st.columns(4)
 
-c1.metric("Faturamento Total", formatar_moeda(faturamento))
-c2.metric("Meta do Período", formatar_moeda(meta_valor))
-c3.metric("Saldo para Meta", formatar_moeda(falta_meta))
-c4.metric("Atingimento (%)", f"{percentual_meta:,.2f}%")
+c1.metric("Meta do Período", formatar_moeda(meta_valor))
+c2.metric("Faturamento Total Realizado", formatar_moeda(faturamento))
+c3.metric("Saldo para atingir a Meta", formatar_moeda(falta_meta))
+c4.metric("Atingimento (    %)", f"{percentual_meta:,.2f}%")
 
 st.divider()
 
 # =====================================================
-# PROJEÇÃO DE FECHAMENTO DO MÊS
+# PROJEÇÃO DE FECHAMENTO DO MÊS (DIAS ÚTEIS)
 # =====================================================
 
-st.subheader("Projeção de Fechamento do Mês")
+st.subheader("Projeção de Fechamento do Mês")  # ← Título visível no Streamlit
 
 from datetime import datetime
+import pandas as pd
 import calendar
 
-# Se não selecionar mês, usa mês atual
+# Hoje
 hoje = datetime.today()
 
+# Definir mês selecionado ou mês atual
 if mes and len(mes) == 1:
     mes_nome = mes[0]
 else:
@@ -212,25 +219,37 @@ mapa_numero_mes = {
     "Maio": 5, "Junho": 6, "Julho": 7, "Agosto": 8,
     "Setembro": 9, "Outubro": 10, "Novembro": 11, "Dezembro": 12
 }
-
 numero_mes = mapa_numero_mes.get(mes_nome, hoje.month)
-
 ano_atual = hoje.year
-dias_no_mes = calendar.monthrange(ano_atual, numero_mes)[1]
-dia_atual = hoje.day
 
-dias_decorridos = min(dia_atual, dias_no_mes)
-dias_restantes = dias_no_mes - dias_decorridos
+# Primeiro e último dia do mês
+primeiro_dia = datetime(ano_atual, numero_mes, 1)
+ultimo_dia = datetime(ano_atual, numero_mes, calendar.monthrange(ano_atual, numero_mes)[1])
 
-# Média diária
-media_diaria = faturamento / dias_decorridos if dias_decorridos > 0 else 0
+# Criar série de datas do mês
+datas_mes = pd.date_range(primeiro_dia, ultimo_dia, freq='D')
 
-# Projeção final
-projecao_final = media_diaria * dias_no_mes
+# Filtrar apenas dias úteis (segunda=0 ... sexta=4)
+dias_uteis_mes = datas_mes[datas_mes.weekday < 5]
+
+# Dias úteis já passados
+dias_uteis_passados = dias_uteis_mes[dias_uteis_mes <= hoje]
+dias_uteis_restantes = dias_uteis_mes[dias_uteis_mes > hoje]
+
+# Quantidade de dias úteis
+num_dias_uteis_passados = len(dias_uteis_passados)
+num_dias_uteis_restantes = len(dias_uteis_restantes)
+num_dias_uteis_total = len(dias_uteis_mes)
+
+# Média diária considerando dias úteis
+media_diaria = faturamento / num_dias_uteis_passados if num_dias_uteis_passados > 0 else 0
+
+# Projeção final considerando todos os dias úteis
+projecao_final = media_diaria * num_dias_uteis_total
 
 # Quanto falta para meta
 valor_restante = meta_valor - faturamento
-necessario_por_dia = valor_restante / dias_restantes if dias_restantes > 0 else 0
+necessario_por_dia = valor_restante / num_dias_uteis_restantes if num_dias_uteis_restantes > 0 else 0
 
 # =====================================================
 # EXIBIÇÃO EXECUTIVA
@@ -240,17 +259,30 @@ p1, p2, p3, p4 = st.columns(4)
 
 p1.metric("Média Diária Atual", formatar_moeda(media_diaria))
 p2.metric("Projeção de Fechamento", formatar_moeda(projecao_final))
-p3.metric("Dias Restantes", dias_restantes)
-p4.metric("Necessário por Dia p/ Meta", formatar_moeda(necessario_por_dia))
+p3.metric("Necessário por Dia p/ Meta", formatar_moeda(necessario_por_dia))
+p4.metric("Dias Úteis Restantes", num_dias_uteis_restantes)
+
+# =====================================================
+# EXPLICAÇÃO - PROJEÇÃO DE FECHAMENTO
+# =====================================================
+st.expander(" O que significa Projeção de Fechamento do Mês?").write("""
+### Explicação Simples
+
+- **Saldo para a Meta**: Quanto ainda falta faturar para atingir a meta total.  
+- **Projeção de Fechamento**: Estimativa de faturamento até o fim do mês, baseada na média diária atual (considerando apenas dias úteis).  
+- A projeção pode ser menor ou maior que a meta, dependendo do ritmo de vendas.  
+- Por isso, os números podem ser diferentes: um é “faltante” e o outro é “previsto”.
+""")
+
 
 # =====================================================
 # ALERTA EXECUTIVO
 # =====================================================
 
 if projecao_final >= meta_valor:
-    st.success("🚀 Mantendo o ritmo atual, a meta será atingida.")
+    st.success("Mantido o volume atual, a projeção indica: Atingimento da meta ao final do mês")
 else:
-    st.error("⚠ No ritmo atual, a meta NÃO será atingida.")
+    st.error("⚠ Mantido o volume atual, a projeção indica: Desvio negativo ao final do mês")
 
 # =====================================================
 # INDICADORES DE VOLUME
@@ -353,9 +385,3 @@ if not top_clientes.empty:
 
 st.divider()
 
-# =====================================================
-# BASE DETALHADA
-# =====================================================
-
-st.subheader("Base de Dados Detalhada")
-st.dataframe(df_filtrado, use_container_width=True)
