@@ -52,19 +52,26 @@ def formatar_moeda(valor):
 
 @st.cache_data
 def carregar_dados():
-    df_sc = pd.read_excel("BASE_SC_SP_NEW.xlsx", sheet_name="SP")
-    df_sp = pd.read_excel("BASE_SC_SP_NEW.xlsx", sheet_name="SC")
+    # Ler as abas corretas (inverter se trocou no Excel)
+    df_sc = pd.read_excel("BASE_SC_SP_NEW.xlsx", sheet_name="SC")  # agora pega a aba SC
+    df_sp = pd.read_excel("BASE_SC_SP_NEW.xlsx", sheet_name="SP")  # agora pega a aba SP
 
+    # Tirar espaços extras dos nomes das colunas
     df_sc.columns = df_sc.columns.str.strip()
     df_sp.columns = df_sp.columns.str.strip()
 
+    # Ajustar a coluna Filial conforme a aba correta
     df_sc["Filial"] = "SC"
     df_sp["Filial"] = "SP"
 
+    # Unir as duas abas em um único DataFrame
     df = pd.concat([df_sc, df_sp], ignore_index=True)
 
+
+    # Converter coluna de data
     df["DT Emissao"] = pd.to_datetime(df["DT Emissao"])
 
+    # Mapear meses para português
     mapa_meses = {
         "January": "Janeiro",
         "February": "Fevereiro",
@@ -82,6 +89,7 @@ def carregar_dados():
 
     df["Mes"] = df["DT Emissao"].dt.strftime("%B").map(mapa_meses)
 
+    # Filtrar Vendedor 1
     if "Vendedor 1" in df.columns:
         df = df[df["Vendedor 1"] != "KP"]
 
